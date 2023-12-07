@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.GroupVIntUtil;
+import java.nio.ByteBuffer;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -322,26 +323,25 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       return;
     }
 
+    ByteBuffer buffer;
     try {
-      final int flag = curSegment.get(LAYOUT_BYTE, curPosition++) & 0xFF;
+      buffer = curSegment
+                  .asSlice(curPosition, GroupVIntUtil.MAX_LENGTH_PER_GROUP)
+                  .asByteBuffer()
+                  .order(ByteOrder.LITTLE_ENDIAN);
+    } catch (UnsupportedOperationException e) {
+      // MemorySegment#asByteBuffer could throw this exception
+      GroupVIntUtil.readGroupVInt(this, dst, offset);
+      return;
+    }
 
-      final int n1Minus1 = flag >> 6;
-      final int n2Minus1 = (flag >> 4) & 0x03;
-      final int n3Minus1 = (flag >> 2) & 0x03;
-      final int n4Minus1 = flag & 0x03;
-
-      dst[offset] =
-          curSegment.get(LAYOUT_LE_INT, curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n1Minus1];
-      curPosition += 1 + n1Minus1;
-      dst[offset + 1] =
-          curSegment.get(LAYOUT_LE_INT, curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n2Minus1];
-      curPosition += 1 + n2Minus1;
-      dst[offset + 2] =
-          curSegment.get(LAYOUT_LE_INT, curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n3Minus1];
-      curPosition += 1 + n3Minus1;
-      dst[offset + 3] =
-          curSegment.get(LAYOUT_LE_INT, curPosition) & GroupVIntUtil.GROUP_VINT_MASKS[n4Minus1];
-      curPosition += 1 + n4Minus1;
+    try {
+      curPosition +=
+          GroupVIntUtil.readGroupVIntFromByteBuffer(
+              buffer,
+              0,
+              dst,
+              offset);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }

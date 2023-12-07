@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.lucene.store.DataInput;
 
 /**
@@ -27,7 +28,7 @@ import org.apache.lucene.store.DataInput;
 public final class GroupVIntUtil {
   // the maximum length of a single group-varint is 4 integers + 1 byte flag.
   public static final int MAX_LENGTH_PER_GROUP = 17;
-  public static final int[] GROUP_VINT_MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
+  private static final int[] MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
 
   /**
    * Default implementation of read single group, for optimal performance, you should use {@link
@@ -61,5 +62,26 @@ public final class GroupVIntUtil {
       default:
         return in.readInt() & 0xFFFFFFFFL;
     }
+  }
+
+  public static int readGroupVIntFromByteBuffer(
+      ByteBuffer buffer, int pos, long[] dst, int offset) {
+    int curPosition = pos;
+    final int flag = buffer.get(curPosition++) & 0xFF;
+
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
+    dst[offset] = buffer.getInt(curPosition) & MASKS[n1Minus1];
+    curPosition += 1 + n1Minus1;
+    dst[offset + 1] = buffer.getInt(curPosition) & MASKS[n2Minus1];
+    curPosition += 1 + n2Minus1;
+    dst[offset + 2] = buffer.getInt(curPosition) & MASKS[n3Minus1];
+    curPosition += 1 + n3Minus1;
+    dst[offset + 3] = buffer.getInt(curPosition) & MASKS[n4Minus1];
+    curPosition += 1 + n4Minus1;
+    return curPosition - pos;
   }
 }
