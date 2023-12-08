@@ -27,7 +27,7 @@ import org.apache.lucene.store.DataInput;
 public final class GroupVIntUtil {
   // the maximum length of a single group-varint is 4 integers + 1 byte flag.
   public static final int MAX_LENGTH_PER_GROUP = 17;
-  private static final int[] MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
+  public static final int[] MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF};
 
   /**
    * Default implementation of read single group, for optimal performance, you should use {@link

@@ -128,6 +128,16 @@ public abstract class DataInput implements Cloneable {
     }
   }
 
+  public void readGroupVIntsViaDupCode(long[] dst, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      GroupVIntUtil.readGroupVInt(this, dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = readVInt();
+    }
+  }
+
   /**
    * Reads an int stored in variable-length format. Reads between one and five bytes. Smaller values
    * take fewer bytes. Negative numbers are supported, but should be avoided.

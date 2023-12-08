@@ -48,7 +48,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 3)
+@Warmup(iterations = 5, time = 5)
 @Measurement(iterations = 5, time = 5)
 @Fork(
     value = 1,
@@ -159,14 +159,14 @@ public class GroupVIntBenchmark {
     initByteBuffersInput(docs);
   }
 
-  @Benchmark
-  public void mmap_byteBufferReadVInt(Blackhole bh) throws IOException {
-    byteBufferVIntIn.seek(0);
-    for (int i = 0; i < size; i++) {
-      values[i] = byteBufferVIntIn.readVInt();
-    }
-    bh.consume(values);
-  }
+  //  @Benchmark
+  //  public void mmap_byteBufferReadVInt(Blackhole bh) throws IOException {
+  //    byteBufferVIntIn.seek(0);
+  //    for (int i = 0; i < size; i++) {
+  //      values[i] = byteBufferVIntIn.readVInt();
+  //    }
+  //    bh.consume(values);
+  //  }
 
   @Benchmark
   public void mmap_byteBufferReadGroupVInt(Blackhole bh) throws IOException {
@@ -183,20 +183,27 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
-  public void byteArrayReadVInt(Blackhole bh) {
-    byteArrayVIntIn.rewind();
-    for (int i = 0; i < size; i++) {
-      values[i] = byteArrayVIntIn.readVInt();
-    }
+  public void mmap_byteBufferReadGroupVInt_viaDupCode(Blackhole bh) throws IOException {
+    byteBufferGVIntIn.seek(0);
+    byteBufferGVIntIn.readGroupVIntsViaDupCode(values, size);
     bh.consume(values);
   }
 
-  @Benchmark
-  public void byteArrayReadGroupVInt(Blackhole bh) throws IOException {
-    byteArrayGVIntIn.rewind();
-    byteArrayGVIntIn.readGroupVInts(values, size);
-    bh.consume(values);
-  }
+  //  @Benchmark
+  //  public void byteArrayReadVInt(Blackhole bh) {
+  //    byteArrayVIntIn.rewind();
+  //    for (int i = 0; i < size; i++) {
+  //      values[i] = byteArrayVIntIn.readVInt();
+  //    }
+  //    bh.consume(values);
+  //  }
+  //
+  //  @Benchmark
+  //  public void byteArrayReadGroupVInt(Blackhole bh) throws IOException {
+  //    byteArrayGVIntIn.rewind();
+  //    byteArrayGVIntIn.readGroupVInts(values, size);
+  //    bh.consume(values);
+  //  }
 
   @Benchmark
   public void nioReadGroupVInt(Blackhole bh) throws IOException {
@@ -213,6 +220,13 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
+  public void nioReadGroupVInt_viaDupCode(Blackhole bh) throws IOException {
+    nioGVIntIn.seek(0);
+    nioGVIntIn.readGroupVIntsViaDupCode(values, size);
+    bh.consume(values);
+  }
+
+  @Benchmark
   public void byteBuffersReadGroupVInt(Blackhole bh) throws IOException {
     byteBuffersGVIntIn.seek(0);
     byteBuffersGVIntIn.readGroupVInts(values, size);
@@ -223,6 +237,13 @@ public class GroupVIntBenchmark {
   public void byteBuffersReadGroupVIntBaseline(Blackhole bh) throws IOException {
     byteBuffersGVIntIn.seek(0);
     byteBuffersGVIntIn.readGroupVIntsBaseline(values, size);
+    bh.consume(values);
+  }
+
+  @Benchmark
+  public void byteBuffersReadGroupVInt_viaDupCode(Blackhole bh) throws IOException {
+    byteBuffersGVIntIn.seek(0);
+    byteBuffersGVIntIn.readGroupVIntsViaDupCode(values, size);
     bh.consume(values);
   }
 }

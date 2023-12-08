@@ -161,6 +161,42 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     }
   }
 
+  @Override
+  public void readGroupVIntsViaDupCode(long[] dst, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      readGroupVIntDupCode(dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = readVInt();
+    }
+  }
+
+  private void readGroupVIntDupCode(long[] dst, int offset) throws IOException {
+    if (buffer.remaining() < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
+      GroupVIntUtil.readGroupVInt(this, dst, offset);
+      return;
+    }
+
+    final int flag = buffer.get() & 0xFF;
+
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
+    int curPosition = buffer.position();
+    dst[offset] = buffer.getInt(curPosition) & GroupVIntUtil.MASKS[n1Minus1];
+    curPosition += 1 + n1Minus1;
+    dst[offset + 1] = buffer.getInt(curPosition) & GroupVIntUtil.MASKS[n2Minus1];
+    curPosition += 1 + n2Minus1;
+    dst[offset + 2] = buffer.getInt(curPosition) & GroupVIntUtil.MASKS[n3Minus1];
+    curPosition += 1 + n3Minus1;
+    dst[offset + 3] = buffer.getInt(curPosition) & GroupVIntUtil.MASKS[n4Minus1];
+    curPosition += 1 + n4Minus1;
+    buffer.position(curPosition);
+  }
+
   private void readGroupVInt(long[] dst, int offset) throws IOException {
     if (buffer.remaining() < GroupVIntUtil.MAX_LENGTH_PER_GROUP) {
       GroupVIntUtil.readGroupVInt(this, dst, offset);
