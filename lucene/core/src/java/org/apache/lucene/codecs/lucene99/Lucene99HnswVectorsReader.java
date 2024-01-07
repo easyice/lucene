@@ -398,7 +398,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
     // Allocated to be M*2 to track the current neighbors being explored
-    private final int[] currentNeighborsBuffer;
+    // we need a long[] because this is group-varint are used, all longs are actually required to be
+    // integers.
+    private final long[] currentNeighborsBuffer;
 
     OffHeapHnswGraph(FieldEntry entry, IndexInput vectorIndex) throws IOException {
       this.dataIn =
@@ -411,7 +413,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           vectorIndex.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
       this.graphLevelNodeOffsets =
           DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
-      this.currentNeighborsBuffer = new int[entry.M * 2];
+      this.currentNeighborsBuffer = new long[entry.M * 2];
       graphLevelNodeIndexOffsets = new long[numLevels];
       graphLevelNodeIndexOffsets[0] = 0;
       for (int i = 1; i < numLevels; i++) {
@@ -432,9 +434,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
       if (arcCount > 0) {
-        currentNeighborsBuffer[0] = dataIn.readVInt();
-        for (int i = 1; i < arcCount; i++) {
-          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+        if (Lucene99HnswVectorsFormat.baseline) {
+          currentNeighborsBuffer[0] = dataIn.readVInt();
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          }
+        } else {
+          dataIn.readGroupVInts(currentNeighborsBuffer, arcCount);
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
+          }
         }
       }
       arc = -1;
@@ -451,7 +460,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       if (arcUpTo >= arcCount) {
         return NO_MORE_DOCS;
       }
-      arc = currentNeighborsBuffer[arcUpTo];
+      arc = (int) currentNeighborsBuffer[arcUpTo];
       ++arcUpTo;
       return arc;
     }

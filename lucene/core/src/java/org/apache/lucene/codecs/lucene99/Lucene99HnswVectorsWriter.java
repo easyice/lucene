@@ -324,14 +324,22 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       nnodes[i] = oldToNewMap[nnodes[i]];
     }
     Arrays.sort(nnodes, 0, size);
+    final long[] scratch = new long[nnodes.length];
+    if (size > 0) {
+      scratch[0] = nnodes[0];
+    }
     // Now that we have sorted, do delta encoding to minimize the required bits to store the
     // information
     for (int i = size - 1; i > 0; --i) {
       assert nnodes[i] < maxOrd : "node too large: " + nnodes[i] + ">=" + maxOrd;
-      nnodes[i] -= nnodes[i - 1];
+      scratch[i] = nnodes[i] - nnodes[i - 1];
     }
-    for (int i = 0; i < size; i++) {
-      vectorIndex.writeVInt(nnodes[i]);
+    if (Lucene99HnswVectorsFormat.baseline) {
+      for (int i = 0; i < size; i++) {
+        vectorIndex.writeVInt(nnodes[i]);
+      }
+    } else {
+      vectorIndex.writeGroupVInts(scratch, size);
     }
   }
 
@@ -412,12 +420,20 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         Arrays.sort(nnodes, 0, size);
         // Now that we have sorted, do delta encoding to minimize the required bits to store the
         // information
+        final long[] scratch = new long[nnodes.length];
+        if (size > 0) {
+          scratch[0] = nnodes[0];
+        }
         for (int i = size - 1; i > 0; --i) {
           assert nnodes[i] < countOnLevel0 : "node too large: " + nnodes[i] + ">=" + countOnLevel0;
-          nnodes[i] -= nnodes[i - 1];
+          scratch[i] = nnodes[i] - nnodes[i - 1];
         }
-        for (int i = 0; i < size; i++) {
-          vectorIndex.writeVInt(nnodes[i]);
+        if (Lucene99HnswVectorsFormat.baseline) {
+          for (int i = 0; i < size; i++) {
+            vectorIndex.writeVInt(nnodes[i]);
+          }
+        } else {
+          vectorIndex.writeGroupVInts(scratch, size);
         }
         offsets[level][nodeOffsetId++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);

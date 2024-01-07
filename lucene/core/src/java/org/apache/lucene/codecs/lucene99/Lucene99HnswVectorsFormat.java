@@ -140,6 +140,9 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
 
+  // for benchmark only, need be removed later.
+  public static boolean baseline = false;
+
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null);
